@@ -20,7 +20,7 @@ object SpanTable : Table() {
     override val primaryKey = PrimaryKey(cId)
 
     fun insertOrUpdate(span: Span) {
-        SpanTable.insert {
+        SpanTable.insertIgnore {
             it[cId] = span.id
             it[cName] = span.name
             it[cParentId] = span.parentId
@@ -31,6 +31,7 @@ object SpanTable : Table() {
             it[cFinished] = span.finished
             it[cVersion] = 1
         }
+
         SpanTable.update({
             (cId eq span.id) and (cDuration greaterEq span.duration)
         }) {

@@ -26,7 +26,7 @@ object LogTable : Table() {
     }
 
     fun pagedTraceLogs(traceId: Long, cursor: Cursor<Long>? = null, size: Int = 20): Page<Log, Long> {
-        var query = LogTable.select { cTraceId.eq(traceId) }.orderBy(cId, SortOrder.ASC).limit(size)
+        var query = LogTable.select { cTraceId.eq(traceId) }.limit(size)
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
         val l = query.map {
             Log(
@@ -37,7 +37,7 @@ object LogTable : Table() {
                 it[cfields]
             )
         }
-        val nextCursor = if (l.size <= size) {
+        val nextCursor = if (l.size < size) {
             null
         } else {
             Cursor(l.last().id)

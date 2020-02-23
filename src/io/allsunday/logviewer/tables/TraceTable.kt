@@ -55,7 +55,7 @@ object TraceTable : Table() {
         var query = TraceTable.selectAll().orderBy(cId, SortOrder.DESC).limit(size)
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
         val l = query.map { Trace(it[cId], it[cName], it[cTimestamp], it[cDuration], it[cFinished]) }
-        val nextCursor = if (l.size <= size) {
+        val nextCursor = if (l.size < size) {
             null
         } else {
             Cursor(l.last().id)

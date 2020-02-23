@@ -55,7 +55,7 @@ object SpanTable : Table() {
     }
 
     fun pagedTraceSpans(traceId: Long, cursor: Cursor<Long>? = null, size: Int = 20): Page<Span, Long> {
-        var query = SpanTable.select { cTraceId.eq(traceId) }.orderBy(cId, SortOrder.ASC).limit(size)
+        var query = SpanTable.select { cTraceId.eq(traceId) }.limit(size)
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
         val l = query.map {
             Span(
@@ -69,7 +69,7 @@ object SpanTable : Table() {
                 it[cFinished]
             )
         }
-        val nextCursor = if (l.size <= size) {
+        val nextCursor = if (l.size < size) {
             null
         } else {
             Cursor(l.last().id)

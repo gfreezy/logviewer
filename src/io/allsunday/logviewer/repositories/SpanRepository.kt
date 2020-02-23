@@ -35,6 +35,17 @@ class SpanRepository {
             LogTable.pagedTraceLogs(traceId, cursor, size)
         }
 
+    fun getTrace(traceId: Long): TraceDto = transaction {
+        val pageSpans = pagedTraceSpans(traceId, size = 1000)
+        val pageLogs = pagedTraceLogs(traceId, size = 1000)
+        TraceDto.build(traceId, pageSpans.content, pageLogs.content)
+    }
+
+    fun listTraces(size: Int): List<TraceDto> = transaction {
+        val pageTraces = pagedTraces(size = size)
+        pageTraces.content.map { getTrace(it.id) }
+    }
+
     companion object {
         fun initDatabase(url: String, user: String, password: String) {
             Database.connect(

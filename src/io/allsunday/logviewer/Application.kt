@@ -1,11 +1,7 @@
 package io.allsunday.logviewer
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import io.allsunday.logviewer.libs.ktor.JacksonConverter
-import io.allsunday.logviewer.pojos.Cursor
-import io.allsunday.logviewer.pojos.Error
-import io.allsunday.logviewer.pojos.Log
-import io.allsunday.logviewer.pojos.Span
+import io.allsunday.logviewer.pojos.*
 import io.allsunday.logviewer.repositories.SpanRepository
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
@@ -57,9 +53,7 @@ fun Application.module() {
     }
 
     install(ContentNegotiation) {
-        val jsonConverter = JacksonConverter {
-            propertyNamingStrategy = PropertyNamingStrategy.SNAKE_CASE
-        }
+        val jsonConverter = JacksonConverter()
         register(ContentType.Application.Json, jsonConverter)
     }
 
@@ -74,6 +68,27 @@ fun Application.module() {
         route("/api") {
             get("/") {
                 call.respond("")
+            }
+
+            get("/services") {
+                call.respond(PagedDto(listOf(SERVICE_NAME), total = 1, limit = 1))
+            }
+
+            get("/services/{service}/operations") {
+                val serviceName = call.parameters["service"]
+
+                call.respond(PagedDto(listOf(OPERATION_NAME), total = 1, limit = 1))
+            }
+
+            get("/traces") {
+                val limit = call.request.queryParameters["limit"]?.toInt() ?: 20
+
+                call.respond(pagedTraces(repo.listTraces(limit)))
+            }
+
+            get("/traces/{traceId}") {
+                val traceId = call.parameters["traceId"]?.toLong() ?: throw MissingRequestParameterException("traceId")
+                call.respond(pagedTraces(repo.getTrace(traceId)))
             }
 
             get("/list-traces") {
@@ -102,9 +117,23 @@ fun Application.module() {
                 call.respond("")
             }
 
+            post("/collect/spans") {
+                val spans = call.receive<List<Span>>()
+                for (span in spans) {
+                    repo.addOrUpdateSpan(span)
+                }
+                call.respond("")
+            }
             post("/collect/log") {
                 val log = call.receive<Log>()
                 repo.addLog(log)
+                call.respond("")
+            }
+            post("/collect/logs") {
+                val logs = call.receive<List<Log>>()
+                for (log in logs) {
+                    repo.addLog(log)
+                }
                 call.respond("")
             }
         }

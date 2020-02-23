@@ -1,6 +1,8 @@
 package io.allsunday.logviewer.pojos
 
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Span(
     val id: Long,
     val parentId: Long?,

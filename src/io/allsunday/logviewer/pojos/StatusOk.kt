@@ -1,37 +1,8 @@
 package io.allsunday.logviewer.pojos
 
-import kotlinx.serialization.Serializable
-
 const val PROCESS_ID = "tracing"
-const val OPERATION_NAME = "trace"
 const val SERVICE_NAME = "trace"
 
-@Serializable
-enum class Status {
-    OK,
-    ERROR
-}
-
-@Serializable
-data class Ok<T>(
-    val content: T
-) {
-    val status: Status = Status.OK
-
-    companion object {
-        val empty = Ok(null)
-    }
-}
-
-@Serializable
-data class Error<T>(
-    val content: T
-) {
-    val status: Status = Status.ERROR
-}
-
-
-@Serializable
 data class PagedDto<T>(
     val data: List<T>,
     val total: Int,
@@ -40,20 +11,17 @@ data class PagedDto<T>(
     val errors: List<String>? = null
 )
 
-@Serializable
 data class FieldDto(
     val key: String,
     val value: String,
     val type: String = "string"
 )
 
-@Serializable
 data class ProcessDto(
     val serviceName: String,
     val tags: List<FieldDto>
 )
 
-@Serializable
 data class LogDto(
     val timestamp: Long,
     val fields: List<FieldDto>
@@ -66,14 +34,12 @@ data class LogDto(
     }
 }
 
-@Serializable
 data class ReferenceDto(
     val traceID: String,
     val spanID: String,
     val refType: String = "CHILD_OF"
 )
 
-@Serializable
 data class SpanDto(
     val traceID: String,
     val spanID: String,
@@ -102,7 +68,6 @@ data class SpanDto(
     }
 }
 
-@Serializable
 data class TraceDto(
     val traceID: String,
     val spans: List<SpanDto>,

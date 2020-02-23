@@ -21,33 +21,20 @@ object TraceTable : Table() {
     fun insertOrUpdate(span: Span) {
         assert(span.parentId == null)
 
-        val row = TraceTable.select {
-            cId.eq(span.traceId)
-        }.firstOrNull()
+        TraceTable.insertIgnore {
+            it[cName] = span.name
+            it[cTimestamp] = span.timestamp
+            it[cId] = span.traceId
+            it[cDuration] = span.duration
+            it[cFinished] = span.finished
+            it[cVersion] = 1
+        }
 
-        if (row != null) {
-            if (span.timestamp >= row[cTimestamp]) {
-                val ret = TraceTable.update({
-                    (cId eq row[cId]) and (cVersion eq row[cVersion])
-                }) {
-                    it[cDuration] = span.duration
-                    it[cFinished] = span.finished
-                    it[cVersion] =
-                        Expression.build { cVersion.plus(1) }
-                }
-                if (ret == 0) {
-                    throw SQLException("Update TraceTable failed, retry. id: ${row[cId]}, version: ${row[cVersion]}")
-                }
-            }
-        } else {
-            TraceTable.insert {
-                it[cName] = span.name
-                it[cTimestamp] = span.timestamp
-                it[cId] = span.traceId
-                it[cDuration] = span.duration
-                it[cFinished] = span.finished
-                it[cVersion] = 1
-            }
+        TraceTable.update({
+            (cId eq span.traceId) and (cDuration greaterEq span.duration)
+        }) {
+            it[cDuration] = span.duration
+            it[cFinished] = span.finished
         }
     }
 

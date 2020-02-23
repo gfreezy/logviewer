@@ -41,7 +41,7 @@ fun Application.module() {
 
     install(StatusPages) {
         exception<MissingRequestParameterException> { cause ->
-            call.respond(HttpStatusCode.BadRequest, Error(cause.message))
+            call.respond(HttpStatusCode.BadRequest, cause)
         }
 
         exception<Throwable> { cause ->
@@ -75,9 +75,7 @@ fun Application.module() {
             }
 
             get("/services/{service}/operations") {
-                val serviceName = call.parameters["service"]
-
-                call.respond(PagedDto(listOf(OPERATION_NAME), total = 1, limit = 1))
+                call.respond(PagedDto(emptyList<String>(), total = 0, limit = 0))
             }
 
             get("/traces") {
@@ -114,27 +112,23 @@ fun Application.module() {
             post("/collect/span") {
                 val span = call.receive<Span>()
                 repo.addOrUpdateSpan(span)
-                call.respond("")
+                call.respondText("success")
             }
 
             post("/collect/spans") {
                 val spans = call.receive<List<Span>>()
-                for (span in spans) {
-                    repo.addOrUpdateSpan(span)
-                }
-                call.respond("")
+                repo.addOrUpdateSpans(spans)
+                call.respondText("success")
             }
             post("/collect/log") {
                 val log = call.receive<Log>()
                 repo.addLog(log)
-                call.respond("")
+                call.respondText("success")
             }
             post("/collect/logs") {
                 val logs = call.receive<List<Log>>()
-                for (log in logs) {
-                    repo.addLog(log)
-                }
-                call.respond("")
+                repo.addLogs(logs)
+                call.respondText("success")
             }
         }
     }

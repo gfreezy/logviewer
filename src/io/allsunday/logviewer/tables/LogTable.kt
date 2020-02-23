@@ -4,7 +4,10 @@ import io.allsunday.logviewer.libs.exposed.jsonb
 import io.allsunday.logviewer.pojos.Cursor
 import io.allsunday.logviewer.pojos.Log
 import io.allsunday.logviewer.pojos.Page
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.select
 
 object LogTable : Table() {
     private val cId = long("id")
@@ -16,7 +19,7 @@ object LogTable : Table() {
     override val primaryKey = PrimaryKey(cId)
 
     fun insert(log: Log) {
-        LogTable.insert {
+        LogTable.insertIgnore {
             it[cId] = log.id
             it[cSpanId] = log.spanId
             it[cTraceId] = log.traceId

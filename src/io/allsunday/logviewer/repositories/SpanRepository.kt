@@ -1,5 +1,7 @@
 package io.allsunday.logviewer.repositories
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import io.allsunday.logviewer.pojos.*
 import io.allsunday.logviewer.tables.LogTable
 import io.allsunday.logviewer.tables.SpanTable
@@ -17,8 +19,20 @@ class SpanRepository {
         SpanTable.insertOrUpdate(span)
     }
 
+    fun addOrUpdateSpans(spans: List<Span>) = transaction {
+        for (span in spans) {
+            addOrUpdateSpan(span)
+        }
+    }
+
     fun addLog(log: Log) = transaction {
         LogTable.insert(log)
+    }
+
+    fun addLogs(logs: List<Log>) = transaction {
+        for (it in logs) {
+            LogTable.insert(it)
+        }
     }
 
     fun pagedTraces(cursor: Cursor<Long>? = null, size: Int = 20): Page<Trace, Long> = transaction {
@@ -48,10 +62,17 @@ class SpanRepository {
 
     companion object {
         fun initDatabase(url: String, user: String, password: String) {
-            Database.connect(
-                url, driver = "com.mysql.cj.jdbc.Driver",
-                user = user, password = password
-            )
+            val config = HikariConfig()
+            config.jdbcUrl = url
+            config.username = user
+            config.password = password
+            config.addDataSourceProperty("cachePrepStmts", "true")
+            config.addDataSourceProperty("prepStmtCacheSize", "250")
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
+
+            val ds = HikariDataSource(config)
+
+            Database.connect(ds)
 
             transaction {
                 SchemaUtils.create(TraceTable, SpanTable, LogTable)

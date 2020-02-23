@@ -5,7 +5,6 @@ import io.allsunday.logviewer.pojos.Cursor
 import io.allsunday.logviewer.pojos.Page
 import io.allsunday.logviewer.pojos.Span
 import org.jetbrains.exposed.sql.*
-import java.sql.SQLException
 
 object SpanTable : Table() {
     private val cId = long("id")
@@ -21,36 +20,22 @@ object SpanTable : Table() {
     override val primaryKey = PrimaryKey(cId)
 
     fun insertOrUpdate(span: Span) {
-        val row = SpanTable.select {
-            cId.eq(span.id)
-        }.firstOrNull()
-
-        if (row != null) {
-            if (span.timestamp >= row[cTimestamp]) {
-                val ret = SpanTable.update({
-                    (cId eq row[cId]) and (cVersion eq row[cVersion])
-                }) {
-                    it[cDuration] = span.duration
-                    it[cFinished] = span.finished
-                    it[cVersion] =
-                        Expression.build { cVersion.plus(1) }
-                }
-                if (ret == 0) {
-                    throw SQLException("Update SpanTable failed, retry. id: ${row[cId]}, version: ${row[cVersion]}")
-                }
-            }
-        } else {
-            SpanTable.insert {
-                it[cId] = span.id
-                it[cName] = span.name
-                it[cParentId] = span.parentId
-                it[cTraceId] = span.traceId
-                it[cTimestamp] = span.timestamp
-                it[cDuration] = span.duration
-                it[cTags] = span.tags
-                it[cFinished] = span.finished
-                it[cVersion] = 1
-            }
+        SpanTable.insert {
+            it[cId] = span.id
+            it[cName] = span.name
+            it[cParentId] = span.parentId
+            it[cTraceId] = span.traceId
+            it[cTimestamp] = span.timestamp
+            it[cDuration] = span.duration
+            it[cTags] = span.tags
+            it[cFinished] = span.finished
+            it[cVersion] = 1
+        }
+        SpanTable.update({
+            (cId eq span.id) and (cDuration greaterEq span.duration)
+        }) {
+            it[cDuration] = span.duration
+            it[cFinished] = span.finished
         }
     }
 

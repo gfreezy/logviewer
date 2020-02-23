@@ -1,8 +1,11 @@
 package io.allsunday.logviewer
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import io.allsunday.logviewer.libs.ktor.JacksonConverter
 import io.allsunday.logviewer.pojos.*
 import io.allsunday.logviewer.repositories.SpanRepository
+import io.allsunday.logviewer.tables.TraceQueryCondition
 import io.ktor.application.Application
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
@@ -52,8 +55,9 @@ fun Application.module() {
         }
     }
 
+    val objectMapper = jacksonObjectMapper()
     install(ContentNegotiation) {
-        val jsonConverter = JacksonConverter()
+        val jsonConverter = JacksonConverter(objectMapper)
         register(ContentType.Application.Json, jsonConverter)
     }
 
@@ -80,8 +84,33 @@ fun Application.module() {
 
             get("/traces") {
                 val limit = call.request.queryParameters["limit"]?.toInt() ?: 20
+                val tags = call.request.queryParameters["tags"]?.let { objectMapper.readValue<Map<String, String>>(it) }
+                val finished = tags?.get("finished")?.let {
+                    when (it) {
+                        "true" -> true
+                        "false" -> false
+                        else -> null
+                    }
+                }
+                val minDuration = call.request.queryParameters["minDuration"]?.let(::humanDurationToMicroSecondsOrNull)
+                val maxDuration = call.request.queryParameters["maxDuration"]?.let(::humanDurationToMicroSecondsOrNull)
+                val (beginTs, endTs) = when (val lookback = call.request.queryParameters["lookback"]) {
+                    "custom" -> (call.request.queryParameters["start"]?.toLong() to call.request.queryParameters["end"]?.toLong())
+                    null -> (null to null)
+                    else -> {
+                        val now = System.currentTimeMillis() * 1000
+                        (null to (now - humanDurationToMicroSeconds(lookback)))
+                    }
+                }
+                val condition = TraceQueryCondition(
+                    minDuration = minDuration,
+                    maxDuration = maxDuration,
+                    beginTs = beginTs,
+                    endTs = endTs,
+                    finished = finished
+                )
 
-                call.respond(pagedTraces(repo.listTraces(limit)))
+                call.respond(pagedTraces(repo.listTraces(condition, size = limit)))
             }
 
             get("/traces/{traceId}") {
@@ -91,7 +120,7 @@ fun Application.module() {
 
             get("/list-traces") {
                 val (cursor, size) = call.getCursorAndSize()
-                val ret = repo.pagedTraces(cursor, size)
+                val ret = repo.pagedTraces(cursor = cursor, size = size)
                 call.respond(ret)
             }
 
@@ -140,3 +169,25 @@ fun ApplicationCall.getCursorAndSize(): Pair<Cursor<Long>?, Int> {
     val cursor = params["cursor"]?.toLongOrNull()?.let { Cursor(it) }
     return cursor to size
 }
+
+fun humanDurationToMicroSecondsOrNull(text: String): Long? {
+    val map: Map<String, Long> = mapOf(
+        "d" to 1000_000L * 60 * 60 * 24,
+        "h" to 1000_000L * 60 * 60,
+        "min" to 1000_000L * 60,
+        "m" to 1000_000L * 60,
+        "s" to 1000_000L,
+        "ms" to 1000L,
+        "us" to 1L
+    )
+    for ((unit, multiplier) in map) {
+        if (text.endsWith(unit)) {
+            val number = text.substring(0, text.length - unit.length).toLong()
+            return number * multiplier
+        }
+    }
+    return null
+}
+
+fun humanDurationToMicroSeconds(text: String): Long =
+    humanDurationToMicroSecondsOrNull(text) ?: throw IllegalArgumentException("\"$text\" is not a valid duration")

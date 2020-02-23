@@ -11,8 +11,8 @@ import org.jetbrains.exposed.sql.select
 
 object LogTable : Table() {
     private val cId = long("id")
-    private val cSpanId = long("span_id").index()
-    private val cTraceId = long("trace_id")
+    private val cSpanId = long("span_id")
+    private val cTraceId = long("trace_id").index()
     private val cTimestamp = long("timestamp")
     private val cfields = jsonb<Map<String, String>>("fields")
 
@@ -33,11 +33,11 @@ object LogTable : Table() {
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
         val l = query.map {
             Log(
-                it[cId],
-                it[cTraceId],
-                it[cTimestamp],
-                it[cSpanId],
-                it[cfields]
+                id = it[cId],
+                timestamp = it[cTimestamp],
+                traceId = it[cTraceId],
+                spanId = it[cSpanId],
+                fields = it[cfields]
             )
         }
         val nextCursor = if (l.size < size) {

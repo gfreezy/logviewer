@@ -7,13 +7,20 @@ import io.allsunday.logviewer.pojos.Trace
 import org.jetbrains.exposed.sql.*
 import java.sql.SQLException
 
+data class TraceQueryCondition(
+    val minDuration: Long?,
+    val maxDuration: Long?,
+    val beginTs: Long?,
+    val endTs: Long?,
+    val finished: Boolean?
+)
+
 object TraceTable : Table() {
     private val cId = long("id")
     private val cName = varchar("name", length = 50)
-    private val cTimestamp = long("timestamp")
-    private val cDuration = long("duration")
-    private val cFinished = bool("finished")
-    private val cVersion = integer("version")
+    private val cTimestamp = long("timestamp").index()
+    private val cDuration = long("duration").index()
+    private val cFinished = bool("finished").index()
 
     override val primaryKey = PrimaryKey(cId)
 
@@ -27,7 +34,6 @@ object TraceTable : Table() {
             it[cId] = span.traceId
             it[cDuration] = span.duration
             it[cFinished] = span.finished
-            it[cVersion] = 1
         }
 
         TraceTable.update({
@@ -38,10 +44,29 @@ object TraceTable : Table() {
         }
     }
 
-    fun pagedTraces(cursor: Cursor<Long>? = null, size: Int = 20): Page<Trace, Long> {
+    fun pagedTraces(
+        condition: TraceQueryCondition? = null,
+        cursor: Cursor<Long>? = null,
+        size: Int = 20
+    ): Page<Trace, Long> {
         var query = TraceTable.selectAll().orderBy(cId, SortOrder.DESC).limit(size)
+        if (condition != null) {
+            condition.finished?.let { query.andWhere { cFinished eq it } }
+            condition.minDuration?.let { query.andWhere { cDuration greaterEq it } }
+            condition.maxDuration?.let { query.andWhere { cDuration less it } }
+            condition.beginTs?.let { query.andWhere { cTimestamp greaterEq it } }
+            condition.endTs?.let { query.andWhere { cTimestamp less it } }
+        }
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
-        val l = query.map { Trace(it[cId], it[cName], it[cTimestamp], it[cDuration], it[cFinished]) }
+        val l = query.map {
+            Trace(
+                id = it[cId],
+                name = it[cName],
+                timestamp = it[cTimestamp],
+                duration = it[cDuration],
+                finished = it[cFinished]
+            )
+        }
         val nextCursor = if (l.size < size) {
             null
         } else {

@@ -15,7 +15,6 @@ object SpanTable : Table() {
     private val cDuration = long("duration")
     private val cTags = jsonb<Map<String, String>>("tags")
     private val cFinished = bool("finished")
-    private val cVersion = integer("version")
 
     override val primaryKey = PrimaryKey(cId)
 
@@ -29,7 +28,6 @@ object SpanTable : Table() {
             it[cDuration] = span.duration
             it[cTags] = span.tags
             it[cFinished] = span.finished
-            it[cVersion] = 1
         }
 
         SpanTable.update({
@@ -45,14 +43,14 @@ object SpanTable : Table() {
         query = cursor?.next?.let { query.andWhere { cId.less(it) } } ?: query
         val l = query.map {
             Span(
-                it[cId],
-                it[cParentId],
-                it[cTraceId],
-                it[cName],
-                it[cTimestamp],
-                it[cDuration],
-                it[cTags],
-                it[cFinished]
+                id = it[cId],
+                parentId = it[cParentId],
+                traceId = it[cTraceId],
+                name = it[cName],
+                timestamp = it[cTimestamp],
+                duration = it[cDuration],
+                tags = it[cTags],
+                finished = it[cFinished]
             )
         }
         val nextCursor = if (l.size < size) {

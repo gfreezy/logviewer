@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource
 import io.allsunday.logviewer.pojos.*
 import io.allsunday.logviewer.tables.LogTable
 import io.allsunday.logviewer.tables.SpanTable
+import io.allsunday.logviewer.tables.TraceQueryCondition
 import io.allsunday.logviewer.tables.TraceTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -35,8 +36,12 @@ class SpanRepository {
         }
     }
 
-    fun pagedTraces(cursor: Cursor<Long>? = null, size: Int = 20): Page<Trace, Long> = transaction {
-        TraceTable.pagedTraces(cursor, size)
+    fun pagedTraces(
+        traceQueryCondition: TraceQueryCondition? = null,
+        cursor: Cursor<Long>? = null,
+        size: Int = 20
+    ): Page<Trace, Long> = transaction {
+        TraceTable.pagedTraces(traceQueryCondition, cursor, size)
     }
 
     fun pagedTraceSpans(traceId: Long, cursor: Cursor<Long>? = null, size: Int = 20): Page<Span, Long> =
@@ -55,8 +60,8 @@ class SpanRepository {
         TraceDto.build(traceId, pageSpans.content, pageLogs.content)
     }
 
-    fun listTraces(size: Int): List<TraceDto> = transaction {
-        val pageTraces = pagedTraces(size = size)
+    fun listTraces(traceQueryCondition: TraceQueryCondition? = null, size: Int = 20): List<TraceDto> = transaction {
+        val pageTraces = pagedTraces(traceQueryCondition, size = size)
         pageTraces.content.map { getTrace(it.id) }
     }
 
@@ -66,6 +71,7 @@ class SpanRepository {
             config.jdbcUrl = url
             config.username = user
             config.password = password
+            config.isAutoCommit = false
             config.addDataSourceProperty("cachePrepStmts", "true")
             config.addDataSourceProperty("prepStmtCacheSize", "250")
             config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")

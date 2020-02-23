@@ -10,6 +10,12 @@
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+    <appender name="hikari" class="ch.qos.logback.core.FileAppender">
+        <file>exposed.log</file>
+        <encoder>
+            <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
     <root level="trace">
         <appender-ref ref="STDOUT"/>
     </root>
@@ -17,5 +23,8 @@
     <logger name="io.netty" level="INFO"/>
     <logger name="Exposed" level="DEBUG" additivity="false">
         <appender-ref ref="exposed"/>
+    </logger>
+    <logger name="com.zaxxer.hikari.pool.HikariPool" level="DEBUG" additivity="false">
+        <appender-ref ref="hikari"/>
     </logger>
 </configuration>
